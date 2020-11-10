@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ProgForceTestApp</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="you_have_to_accept_permission_for_location">You have to accept permission to get your current location</string>
 </resources>
