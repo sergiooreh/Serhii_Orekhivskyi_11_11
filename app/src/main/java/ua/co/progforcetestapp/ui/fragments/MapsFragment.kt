@@ -2,9 +2,14 @@ package ua.co.progforcetestapp.ui.fragments
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
+import android.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
@@ -37,15 +42,18 @@ import kotlin.math.absoluteValue
 class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyPermissions.PermissionCallbacks{
     private lateinit var map: GoogleMap
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var geocoder: Geocoder
 
     private var latitude: Double = 51.5
     private var longitude: Double = -0.1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
-        askLocationPermission()
+        geocoder = Geocoder(requireContext())
+
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -54,16 +62,67 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
+        askLocationPermission()
+
         toforecast_btn.setOnClickListener {
             if (checkForInternetConnection(requireContext())){
                 findNavController().navigate(R.id.action_mapsFragment_to_forecastFragment,
                     bundleOf("lat" to latitude.toFloat(), "lon" to longitude.toFloat()))
+                map.clear()
             } else {
                 Snackbar.make(requireActivity().rootView,"No network connection",Snackbar.LENGTH_LONG).show()
             }
 
         }
     }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.options_menu, menu)
+        val searchItem = menu.findItem(R.id.search)
+        val searchView = searchItem.actionView as SearchView
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean{
+                if (query != null) {
+                    if (checkForInternetConnection(requireContext())) {
+                        if (geocoder.getFromLocationName(query, 1).isNotEmpty()) {
+                            geocoder.getFromLocationName(query, 1).first().let { address ->
+                                map.clear()
+                                val myLocation = LatLng(address.latitude, address.longitude)
+                                map.addMarker(
+                                    MarkerOptions().position(
+                                        LatLng(
+                                            address.latitude,
+                                            address.longitude
+                                        )
+                                    )
+                                )
+                                map.animateCamera(
+                                    CameraUpdateFactory.newLatLngZoom(
+                                        myLocation,
+                                        4.0F
+                                    )
+                                )
+
+                                latitude = address.latitude
+                                longitude = address.longitude
+                            }
+                        }
+                    } else {
+                        searchView.onActionViewCollapsed()
+                        searchItem.collapseActionView()
+                        Snackbar.make(requireActivity().rootView,"No network connection",Snackbar.LENGTH_LONG).show()
+                    }
+                }
+                return true
+            }
+            override fun onQueryTextChange(query: String?): Boolean {
+                return true
+            }
+        })
+
+    }
+
 
     private fun getLastLocation() {
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) !=
