@@ -2,13 +2,14 @@ package ua.co.progforcetestapp.ui.fragments
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.core.app.ActivityCompat
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -18,13 +19,18 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.fragment_maps.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import pub.devrel.easypermissions.EasyPermissions
 import ua.co.progforcetestapp.R
 import ua.co.progforcetestapp.utility.Constants.LOCATION_REQUEST_CODE
 import ua.co.progforcetestapp.utility.TrackingUtility
+import ua.co.progforcetestapp.utility.checkForInternetConnection
+import kotlin.math.absoluteValue
 
 
 @AndroidEntryPoint
@@ -32,8 +38,8 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
     private lateinit var map: GoogleMap
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
-    private var latitude: Double = -34.0
-    private var longitude: Double = 151.0
+    private var latitude: Double = 51.5
+    private var longitude: Double = -0.1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +53,16 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
 
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        toforecast_btn.setOnClickListener {
+            if (checkForInternetConnection(requireContext())){
+                findNavController().navigate(R.id.action_mapsFragment_to_forecastFragment,
+                    bundleOf("lat" to latitude.toFloat(), "lon" to longitude.toFloat()))
+            } else {
+                Snackbar.make(requireActivity().rootView,"No network connection",Snackbar.LENGTH_LONG).show()
+            }
+
+        }
     }
 
     private fun getLastLocation() {
@@ -57,9 +73,12 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
         }
         lifecycleScope.launch {
             fusedLocationProviderClient.lastLocation.await()?.let { location ->
-                val sydney = LatLng(location.latitude, location.longitude)
-                map.addMarker(MarkerOptions().position(sydney).title("Your Location"))
-                map.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+                val myLocation = LatLng(location.latitude, location.longitude)
+                map.addMarker(MarkerOptions().position(myLocation).title("Your Location"))
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(myLocation, 4.0F))
+
+                latitude = location.latitude
+                longitude = location.longitude
             } ?: setDefaultLocation()
         }
     }
@@ -84,9 +103,9 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
     }
 
     private fun setDefaultLocation(){
-        val sydney = LatLng(latitude, longitude)
-        map.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        map.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+        val london = LatLng(latitude, longitude)
+        map.addMarker(MarkerOptions().position(london).title("London"))
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(london, 4.0F))
     }
 
     override fun onMapReady(googleMap: GoogleMap?) {
@@ -97,9 +116,10 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
             map.addMarker(
                 MarkerOptions()
                     .position(latLng!!)
-                    .title("New Location1")
-                    .draggable(true)
-            )
+                    .draggable(true))
+
+            latitude = latLng.latitude
+            longitude = latLng.longitude
         }
 
         map.setOnMarkerDragListener(object : GoogleMap.OnMarkerDragListener{
@@ -113,8 +133,9 @@ class MapsFragment : Fragment(R.layout.fragment_maps), OnMapReadyCallback, EasyP
                     .position(marker?.position!!)
                     .title("New Location")
                     .draggable(true))
-                /*latitude = marker.position.latitude
-                longitude = marker.position.longitude*/
+
+                latitude = marker.position.latitude
+                longitude = marker.position.longitude
             }
         })
     }
