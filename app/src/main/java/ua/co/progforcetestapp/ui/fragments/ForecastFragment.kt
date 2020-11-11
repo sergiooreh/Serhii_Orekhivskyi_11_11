@@ -31,6 +31,8 @@ class ForecastFragment : Fragment(R.layout.fragment_forecast){
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setHasOptionsMenu(false)
+
         forecastForDayAdapter = ForecastForDayAdapter()
         forecastForWeekAdapter = ForecastForWeekAdapter()
     }
