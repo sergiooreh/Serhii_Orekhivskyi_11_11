@@ -74,9 +74,7 @@ class ForecastFragment : Fragment(R.layout.fragment_forecast){
                         forecastForDayAdapter.items = forecast.data?.list?.subList(0,5) as MutableList<ForecastTimeStamp>
                     }
 
-                    currentTemp_tv.text = forecast.data.list.subList(0,5).first {
-                        it.dt_txt >= GregorianCalendar.getInstance().get(Calendar.HOUR_OF_DAY).toString()
-                    }.main.temp.toCelsius().toString()
+                    currentTemp_tv.text = forecast.data.list.subList(0,5).first().main.temp.toCelsius().toString()
 
                     city_tv.text = forecast?.data.city
 
